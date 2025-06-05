@@ -32,9 +32,9 @@ public class BaseTest {
 	
 	
 	@Description("init the driver and properties")
-	@Parameters({"browser"}) //Pass parameter from TestNg to BeforeTest
+	@Parameters({"browser","browserversion","testname"}) //Pass parameter from TestNg to BeforeTest
 	@BeforeTest
-	public void setup(String browserName) {
+	public void setup(String browserName, String browserversion, String testname) {
 		df = new DriverFactory();
 		//First init Prop
 		prop = df.intiProp();
@@ -43,6 +43,8 @@ public class BaseTest {
 		//browserName is passed from .xml file
 		if(browserName!=null) {
 			prop.setProperty("browser", browserName);  //During Runtime config file
+			prop.setProperty("browserversion", browserversion);
+			prop.setProperty("testname", testname);
 		}
 		//Pass Prop and use as per the requirement
 		driver = df.intiDriver(prop);
