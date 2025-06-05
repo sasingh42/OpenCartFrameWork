@@ -120,6 +120,7 @@
 					<suiteXmlFiles>
 						<suiteXmlFile>
 							src/test/resourceses/testrunners/testng_sanity.xml</suiteXmlFile>
+<!--								<suiteXmlFile>${suiteXmlFile}</suiteXmlFile>-->
 					</suiteXmlFiles>
 					<argLine>
 						-javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"

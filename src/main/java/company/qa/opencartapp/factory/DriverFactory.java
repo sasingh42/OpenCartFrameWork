@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Properties;
 
 import org.apache.logging.log4j.LogManager;
@@ -14,6 +16,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariDriver;
 
 import com.qa.opencart.exceptions.BrowserException;
@@ -26,9 +29,10 @@ public class DriverFactory {
 	// From Java help to load . properties files
 	Properties prop;
 	OptionsManager optionsManager;
-	public static final Logger log = LogManager.getLogger(DriverFactory.class); //Logger  for every class use this line
-	//========================== warn,info,error,fatal (memory issue ) ==================================
-	
+	public static final Logger log = LogManager.getLogger(DriverFactory.class); // Logger for every class use this line
+	// ========================== warn,info,error,fatal (memory issue )
+	// ==================================
+
 	public static ThreadLocal<WebDriver> tlDriver = new ThreadLocal<WebDriver>();
 
 	/**
@@ -38,32 +42,51 @@ public class DriverFactory {
 	 */
 	@Step("init driver with properties: {0}")
 	public WebDriver intiDriver(Properties prop) {
-		log.info("Properties :"+prop);
-		//browser is key give me value  	
+		log.info("Properties :" + prop);
+		// browser is key give me value
 		String browserName = prop.getProperty("browser");
-	    
-		//System.out.println("Browser Name ==> " + browserName);
-		log.info("Browser Name :"+browserName);   //Console & File
+
+		// System.out.println("Browser Name ==> " + browserName);
+		log.info("Browser Name :" + browserName); // Console & File
 		optionsManager = new OptionsManager(prop);
 		switch (browserName.toLowerCase().trim()) {
 		case "chrome":
-			tlDriver.set(new ChromeDriver(optionsManager.getChromeOptions()));			
+			if (Boolean.parseBoolean(prop.getProperty("remote"))) {
+				// run on remote/selenium grid server/aws/machine
+				initRemoteDriver("chrome");
+			} else {
+				// run it on local:
+				tlDriver.set(new ChromeDriver(optionsManager.getChromeOptions()));
+			}
 			break;
 		case "edge":
-			tlDriver.set(new EdgeDriver(optionsManager.getEdgeOptions()));			
+			if (Boolean.parseBoolean(prop.getProperty("remote"))) {
+				// run on remote/selenium grid server/aws/machine
+				initRemoteDriver("edge");
+			} else {
+				// run it on local:
+				tlDriver.set(new EdgeDriver(optionsManager.getEdgeOptions()));
+			}
 			break;
 		case "firefox":
-			tlDriver.set(new FirefoxDriver(optionsManager.getFirefoxOptions()));			
+			if (Boolean.parseBoolean(prop.getProperty("remote"))) {
+				// run on remote/selenium grid server/aws/machine
+				initRemoteDriver("firefox");
+			} else {
+				// run it on local:
+				tlDriver.set(new FirefoxDriver(optionsManager.getFirefoxOptions()));
+			}
 			break;
 		case "safari":
-			tlDriver.set(new SafariDriver());			
+			tlDriver.set(new SafariDriver());
 			break;
-
 		default:
-			//System.out.println("plz pass the valid browser name..." + browserName);
-			log.error("plz pass the valid browser name..." + browserName); 
+			// System.out.println("plz pass the valid browser name..." + browserName);
+			log.error("Plz pass the valid browser name..." + browserName);
 			throw new BrowserException("===INVALID BROWSER===");
 		}
+		
+		
 
 		getDriver().get(prop.getProperty("url"));// login page url
 		getDriver().manage().window().maximize();
@@ -71,32 +94,69 @@ public class DriverFactory {
 		return getDriver();
 	}
 	
-	
+	// run it on remote- grid
+		private void initRemoteDriver(String browserName) {
+
+			switch (browserName) {
+			case "chrome":
+				try {
+					tlDriver.set(
+							new RemoteWebDriver(new URL(prop.getProperty("huburl")), optionsManager.getChromeOptions()));
+				} catch (MalformedURLException e) {
+					e.printStackTrace();
+				}
+				break;
+
+			case "firefox":
+				try {
+					tlDriver.set(
+							new RemoteWebDriver(new URL(prop.getProperty("huburl")), optionsManager.getFirefoxOptions()));
+				} catch (MalformedURLException e) {
+					e.printStackTrace();
+				}
+				break;
+
+			case "edge":
+				try {
+					tlDriver.set(new RemoteWebDriver(new URL(prop.getProperty("huburl")), optionsManager.getEdgeOptions()));
+				} catch (MalformedURLException e) {
+					e.printStackTrace();
+				}
+				break;
+
+			default:
+				System.out.println("this browser is not supported on Selenium GRID server..." + browserName);
+				throw new BrowserException("===INVALID BROWSER===");
+			}
+
+		}
+
+
 	/**
 	 * getDriver: get the local thready copy of the driver
 	 */
-	
+
 	public static WebDriver getDriver() {
 		return tlDriver.get();
 	}
-	
 
 	/**
 	 * This is used to initialized config properties
 	 */
-	//mvn clean install -Denv="qa"
+	// mvn clean install -Denv="qa"
 	public Properties intiProp() {
-		String envName = System.getProperty("env"); //To read env from cmd line
+		String envName = System.getProperty("env"); // To read env from cmd line
 		FileInputStream ip = null;
 		prop = new Properties();
 
 		try {
 			if (envName == null) {
 				log.warn("env is null, hence running the tests on QA env by default...");
-				//System.out.println("env is null, hence running the tests on QA env by default...");
+				// System.out.println("env is null, hence running the tests on QA env by
+				// default...");
 				ip = new FileInputStream("./src/test/resourceses/config/qa.config.properties");
-				
-				//./src/test/resources/config/qa.config.properties
+
+				// ./src/test/resources/config/qa.config.properties
 			} else {
 				System.out.println("Running tests on env: " + envName);
 				switch (envName.toLowerCase().trim()) {
@@ -117,12 +177,11 @@ public class DriverFactory {
 					break;
 
 				default:
-					log.error("--------Passing wrong Env Name---------- :"+envName);
-					throw new FrameworkException("===INVALID ENV NAME==== : "+ envName);
+					log.error("--------Passing wrong Env Name---------- :" + envName);
+					throw new FrameworkException("===INVALID ENV NAME==== : " + envName);
 				}
 			}
-		} 
-		catch (FileNotFoundException e) {
+		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
 
@@ -131,12 +190,11 @@ public class DriverFactory {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		return prop;
 
 	}
-	
-	
+
 	/**
 	 * takescreenshot
 	 */
